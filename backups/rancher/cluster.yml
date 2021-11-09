@@ -1,0 +1,9 @@
+nodes:
+- address: rke1
+  user: ubuntu
+  role:
+    - controlplane
+    - etcd
+    - worker
+ingress:
+  provider: "none"

@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: arcadia-ingress
+  namespace: default
+spec:
+  rules:
+  - host: k8s.arcadia-finance.io
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: main-clusterip
+          servicePort: 80
+      - path: /files
+        backend:
+          serviceName: backend-clusterip
+          servicePort: 80
+      - path: /api
+        backend:
+          serviceName: app2-clusterip
+          servicePort: 80
+      - path: /app3
+        backend:
+          serviceName: app3-clusterip
+          servicePort: 80

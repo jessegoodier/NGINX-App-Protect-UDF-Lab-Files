@@ -1,0 +1,89 @@
+## Documentation: https://docs.nginx.com/nginx-ingress-controller/app-protect/configuration/
+#### app-protect-policy.yaml ###
+---
+apiVersion: appprotect.f5.com/v1beta1
+kind: APPolicy
+metadata:
+  name: dataguard-blocking
+spec:
+  policy:
+    name: dataguard_blocking
+    template:
+      name: POLICY_TEMPLATE_NGINX_BASE
+    applicationLanguage: utf-8
+    enforcementMode: blocking
+    blocking-settings:
+      violations:
+      - name: VIOL_DATA_GUARD
+        alarm: true
+        block: true
+    data-guard:
+      enabled: true
+      maskData: true
+      creditCardNumbers: true
+      usSocialSecurityNumbers: true
+      enforcementMode: ignore-urls-in-list
+      enforcementUrls: []
+---
+### app-protect-log-config.yaml ###
+apiVersion: appprotect.f5.com/v1beta1
+kind: APLogConf
+metadata:
+  name: logconf
+spec:
+  filter:
+    request_type: all
+  content:
+    format: default
+    max_request_size: any
+    max_message_size: 5k
+---
+### waf-policy-dataguard.yaml ###
+apiVersion: k8s.nginx.org/v1
+kind: Policy
+metadata:
+  name: waf-policy
+spec:
+  waf:
+    enable: true
+    apPolicy: "default/dataguard-blocking"
+    securityLog:
+      enable: true
+      apLogConf: "default/logconf"
+      logDest: "syslog:server=10.1.20.11:5144"
+---
+### arcadia-virtualserver.yaml ###
+apiVersion: k8s.nginx.org/v1
+kind: VirtualServer
+metadata:
+  name: vs-arcadia
+spec:
+  host: k8s.arcadia-finance.io
+  policies:
+  - name: waf-policy
+  upstreams:
+    - name: main
+      service: main
+      port: 80
+    - name: backend
+      service: backend
+      port: 80
+    - name: app2
+      service: app2
+      port: 80
+    - name: app3
+      service: app3
+      port: 80
+  routes:
+    - path: /
+      action:
+        pass: main
+    - path: /files
+      action:
+        pass: backend
+    - path: /api
+      action:
+        pass: app2
+    - path: /app3
+      action:
+        pass: app3

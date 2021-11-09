@@ -1,0 +1,14 @@
+apiVersion: k8s.nginx.org/v1
+kind: Policy
+metadata:
+  name: trading-rate-limit-policy
+spec:
+  rateLimit:
+    rate: 15r/m
+    key: ${binary_remote_addr}
+    zoneSize: 10M
+    rejectCode: 429
+# default is 503 Service Temporarily Unavailable
+# 429 Too Many Requests fits better here as it is a client issue, not server
+# Documentation:
+# https://docs.nginx.com/nginx-ingress-controller/configuration/policy-resource/#ratelimit

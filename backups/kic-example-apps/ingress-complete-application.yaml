@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-app
+  namespace: ingress-app
+  labels:
+    app: ingress-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingress-app
+  template:
+    metadata:
+      labels:
+        app: ingress-app
+    spec:
+      containers:
+      - name: ingress-app
+        image: nginxinc/nginx-unprivileged
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+        resources:
+          limits:
+            cpu: "1"
+            memory: "100Mi"
+          requests:
+            cpu: "0.1"
+            memory: "20Mi"
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d
+          name: default-conf
+          readOnly: true
+      volumes:
+      - name: default-conf
+        configMap:
+          name: nginx-echo
+          items:
+            - key: default.conf
+              path: default.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-app-svc
+  namespace: ingress-app
+spec:
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: ingress-app
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: ingress-app
+  name: ingress-app
+# if backend is SSL:
+#   annotations:
+#     nginx.org/ssl-services: "ingress-app"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ingress.k8s.nginx.rocks
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ingress-app-svc
+            port:
+              number: 8080
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-echo
+  namespace: ingress-app
+data:
+  default.conf: |
+    server {
+        listen 8080;
+        location / {
+            default_type text/plain;
+            expires -1;
+            return 200 'Server address: $server_addr:$server_port\nServer name: $hostname\nDate: $time_local\nURI: $request_uri\nRequest ID: $request_id\nHost header: $Host\n';
+        }
+    }              
